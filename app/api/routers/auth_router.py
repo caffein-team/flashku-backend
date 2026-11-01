@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 import psycopg
 from app.api.dependencies import get_current_user, get_db
 from app.schemas.auth import (
@@ -13,6 +13,7 @@ from app.schemas.auth import (
 )
 from app.schemas.user import MessageResponse, UserResponse
 from app.services.auth_service import AuthService
+from app.utils.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -21,9 +22,11 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Register a new user"
+    summary="Register a new user (Max 10 req/min)"
 )
+@limiter.limit("10/minute")
 def register(
+    request: Request,
     data: RegisterRequest,
     conn: psycopg.Connection = Depends(get_db)
 ):
@@ -34,9 +37,11 @@ def register(
     "/login",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
-    summary="User login with identifier (email or username) and password"
+    summary="User login with identifier and password (Max 5 req/min)"
 )
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     data: LoginRequest,
     conn: psycopg.Connection = Depends(get_db)
 ):
@@ -47,9 +52,11 @@ def login(
     "/refresh",
     response_model=TokenRefreshResponse,
     status_code=status.HTTP_200_OK,
-    summary="Refresh access token using a valid refresh token"
+    summary="Refresh access token using a valid refresh token (Max 30 req/min)"
 )
+@limiter.limit("30/minute")
 def refresh_token(
+    request: Request,
     data: RefreshTokenRequest,
     conn: psycopg.Connection = Depends(get_db)
 ):
@@ -63,6 +70,7 @@ def refresh_token(
     summary="Logout user and revoke refresh token"
 )
 def logout(
+    request: Request,
     data: LogoutRequest,
     conn: psycopg.Connection = Depends(get_db)
 ):
@@ -73,9 +81,11 @@ def logout(
     "/forgot-password",
     response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
-    summary="Request OTP code for password reset via Gmail SMTP"
+    summary="Request OTP code for password reset via Gmail SMTP (Max 3 req/min)"
 )
+@limiter.limit("3/minute")
 def forgot_password(
+    request: Request,
     data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
     conn: psycopg.Connection = Depends(get_db)
@@ -91,9 +101,11 @@ def forgot_password(
     "/reset-password",
     response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
-    summary="Reset password using received 6-digit OTP code"
+    summary="Reset password using received 6-digit OTP code (Max 5 req/min)"
 )
+@limiter.limit("5/minute")
 def reset_password(
+    request: Request,
     data: ResetPasswordRequest,
     conn: psycopg.Connection = Depends(get_db)
 ):

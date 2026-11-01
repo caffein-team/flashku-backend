@@ -10,6 +10,7 @@ from app.schemas.user import (
     UserResponse,
 )
 from app.services.user_service import UserService
+from app.utils.limiter import limiter
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -20,7 +21,9 @@ router = APIRouter(prefix="/users", tags=["Users"])
     status_code=status.HTTP_200_OK,
     summary="Update current user's profile (name, username)"
 )
+@limiter.limit("20/minute")
 def update_profile(
+    request: Request,
     data: UpdateProfileRequest,
     current_user: UserResponse = Depends(get_current_user),
     conn: psycopg.Connection = Depends(get_db)
@@ -36,8 +39,9 @@ def update_profile(
     "/avatar",
     response_model=AvatarUploadResponse,
     status_code=status.HTTP_200_OK,
-    summary="Upload user avatar image to project storage"
+    summary="Upload user avatar image to project storage (Max 10 req/min)"
 )
+@limiter.limit("10/minute")
 async def upload_avatar(
     request: Request,
     file: UploadFile = File(..., description="Image file (jpg, png, webp, gif max 5MB)"),
@@ -59,7 +63,9 @@ async def upload_avatar(
     status_code=status.HTTP_200_OK,
     summary="Delete current user's avatar"
 )
+@limiter.limit("10/minute")
 def delete_avatar(
+    request: Request,
     current_user: UserResponse = Depends(get_current_user),
     conn: psycopg.Connection = Depends(get_db)
 ):
@@ -73,9 +79,11 @@ def delete_avatar(
     "/change-password",
     response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
-    summary="Change user password"
+    summary="Change user password (Max 5 req/min)"
 )
+@limiter.limit("5/minute")
 def change_password(
+    request: Request,
     data: ChangePasswordRequest,
     current_user: UserResponse = Depends(get_current_user),
     conn: psycopg.Connection = Depends(get_db)
@@ -91,9 +99,11 @@ def change_password(
     "/account",
     response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
-    summary="Permanently delete user account and uploaded assets"
+    summary="Permanently delete user account and uploaded assets (Max 5 req/min)"
 )
+@limiter.limit("5/minute")
 def delete_account(
+    request: Request,
     data: DeleteAccountRequest,
     current_user: UserResponse = Depends(get_current_user),
     conn: psycopg.Connection = Depends(get_db)

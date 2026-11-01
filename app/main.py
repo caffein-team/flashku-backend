@@ -3,11 +3,13 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 from app.api.routers.auth_router import router as auth_router
 from app.api.routers.user_router import router as user_router
 from app.config import settings
 from app.database.connection import get_connection
 from app.database.init_db import init_db
+from app.utils.limiter import custom_rate_limit_handler, limiter
 
 # Ensure uploads directory exists
 UPLOAD_DIR = Path("uploads/avatars")
@@ -27,6 +29,10 @@ app = FastAPI(
     debug=settings.APP_DEBUG,
     lifespan=lifespan,
 )
+
+# Attach SlowAPI rate limiter to app state and register custom 429 handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
 # Enable CORS for Expo Go, browsers, and cross-origin requests
 app.add_middleware(
