@@ -75,3 +75,79 @@ class UserRepository:
             cur.execute(user_queries.GET_USER_BY_EMAIL_OR_USERNAME, {"identifier": identifier})
             row = cur.fetchone()
             return cls._map_row_to_user(row)
+
+    @classmethod
+    def is_username_taken(cls, conn: psycopg.Connection, username: str, exclude_user_id: UUID) -> bool:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.CHECK_USERNAME_TAKEN,
+                {"username": username, "id": exclude_user_id}
+            )
+            return cur.fetchone() is not None
+
+    @classmethod
+    def update_profile(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID,
+        name: Optional[str] = None,
+        username: Optional[str] = None
+    ) -> Optional[User]:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.UPDATE_USER_PROFILE,
+                {
+                    "id": user_id,
+                    "name": name,
+                    "username": username
+                }
+            )
+            row = cur.fetchone()
+            return cls._map_row_to_user(row)
+
+    @classmethod
+    def update_avatar(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID,
+        avatar: Optional[str] = None
+    ) -> Optional[User]:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.UPDATE_USER_AVATAR,
+                {
+                    "id": user_id,
+                    "avatar": avatar
+                }
+            )
+            row = cur.fetchone()
+            return cls._map_row_to_user(row)
+
+    @classmethod
+    def update_password(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID,
+        hashed_password: str
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.UPDATE_USER_PASSWORD,
+                {
+                    "id": user_id,
+                    "password": hashed_password
+                }
+            )
+
+    @classmethod
+    def delete(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID
+    ) -> bool:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.DELETE_USER,
+                {"id": user_id}
+            )
+            return cur.rowcount > 0
