@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import UUID
 import psycopg
@@ -151,3 +152,82 @@ class UserRepository:
                 {"id": user_id}
             )
             return cur.rowcount > 0
+
+    # --- OTP Password Reset ---
+    @classmethod
+    def create_password_reset_otp(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID,
+        otp_code: str,
+        expires_at: datetime
+    ) -> UUID:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.INSERT_PASSWORD_RESET_OTP,
+                {
+                    "user_id": user_id,
+                    "otp_code": otp_code,
+                    "expires_at": expires_at,
+                }
+            )
+            row = cur.fetchone()
+            return row["id"]
+
+    @classmethod
+    def invalidate_previous_otps(cls, conn: psycopg.Connection, user_id: UUID) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.INVALIDATE_PREVIOUS_OTPS,
+                {"user_id": user_id}
+            )
+
+    @classmethod
+    def get_valid_otp(
+        cls,
+        conn: psycopg.Connection,
+        user_id: UUID,
+        otp_code: str
+    ) -> Optional[Dict[str, Any]]:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.GET_VALID_OTP,
+                {"user_id": user_id, "otp_code": otp_code}
+            )
+            return cur.fetchone()
+
+    @classmethod
+    def mark_otp_used(cls, conn: psycopg.Connection, otp_id: UUID) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.MARK_OTP_USED,
+                {"id": otp_id}
+            )
+
+    # --- Token Revocation (Logout & Blacklist) ---
+    @classmethod
+    def revoke_token(
+        cls,
+        conn: psycopg.Connection,
+        token_jti: str,
+        user_id: UUID,
+        expires_at: datetime
+    ) -> None:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.REVOKE_TOKEN,
+                {
+                    "token_jti": token_jti,
+                    "user_id": user_id,
+                    "expires_at": expires_at,
+                }
+            )
+
+    @classmethod
+    def is_token_revoked(cls, conn: psycopg.Connection, token_jti: str) -> bool:
+        with conn.cursor() as cur:
+            cur.execute(
+                user_queries.IS_TOKEN_REVOKED,
+                {"token_jti": token_jti}
+            )
+            return cur.fetchone() is not None

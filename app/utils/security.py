@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+from uuid import uuid4
 import bcrypt
 import jwt
 from app.config import settings
@@ -31,12 +32,17 @@ def create_access_token(subject: str, extra_claims: Optional[Dict[str, Any]] = N
     return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(subject: str, extra_claims: Optional[Dict[str, Any]] = None) -> str:
+def create_refresh_token(
+    subject: str,
+    jti: Optional[str] = None,
+    extra_claims: Optional[Dict[str, Any]] = None
+) -> str:
     now = datetime.now(timezone.utc)
     expire = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode = {
         "sub": subject,
         "type": "refresh",
+        "jti": jti or uuid4().hex,
         "iat": now,
         "exp": expire,
     }

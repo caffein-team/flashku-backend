@@ -1,6 +1,10 @@
 import logging
 from app.database.connection import get_connection
-from app.database.queries.user_queries import CREATE_USERS_TABLE
+from app.database.queries.user_queries import (
+    CREATE_PASSWORD_RESET_OTPS_TABLE,
+    CREATE_REVOKED_TOKENS_TABLE,
+    CREATE_USERS_TABLE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +14,8 @@ def init_db():
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(CREATE_USERS_TABLE)
+                cur.execute(CREATE_PASSWORD_RESET_OTPS_TABLE)
+                cur.execute(CREATE_REVOKED_TOKENS_TABLE)
             conn.commit()
             logger.info("Database tables initialized successfully.")
     except Exception as e:
